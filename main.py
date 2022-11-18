@@ -1,89 +1,71 @@
-import tensorflow as tf
-import tensorflow_hub as hub
+import mediapipe as mp
 import cv2
-from matplotlib import pyplot as plt
 import numpy as np
+import pandas as pd
+import os
+from sklearn.svm import SVC
 
+mpPose = mp.solutions.pose
+pose = mpPose.Pose()
+mpDraw = mp.solutions.drawing_utils  # For drawing keypoints
+points = mpPose.PoseLandmark  # Landmarks
+path = "dataset/images"  # enter dataset path
+data = []
+for p in points:
+    x = str(p)[13:]
+    data.append(x + "_x")
+    data.append(x + "_y")
+    data.append(x + "_z")
+    data.append(x + "_vis")
+data = pd.DataFrame(columns=data)  # Empty dataset
 
-# Функция для перебора каждого обнаруженного человека и его визуализации
-def loop_through_people(frame, keypoints_with_scores, edges, confidence_threshold):
-    for person in keypoints_with_scores:
-        draw_connections(frame, person, edges, confidence_threshold)
-        draw_keypoints(frame, person, confidence_threshold)
+count = 0
 
+for img in os.listdir(path):
+    temp = []
+    img = cv2.imread(path + "/" + img)
+    imageWidth, imageHeight = img.shape[:2]
+    imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    blackie = np.zeros(img.shape)  # Blank image
+    results = pose.process(imgRGB)
 
-def draw_keypoints(frame, keypoints, confidence_threshold):
-    y, x, c = frame.shape
-    shaped = np.squeeze(np.multiply(keypoints, [y, x, 1]))
+    if results.pose_landmarks:
+        mpDraw.draw_landmarks(img, results.pose_landmarks, mpPose.POSE_CONNECTIONS) #draw landmarks on image
+        mpDraw.draw_landmarks(blackie, results.pose_landmarks, mpPose.POSE_CONNECTIONS)  # draw landmarks on blackie
+        landmarks = results.pose_landmarks.landmark
 
-    for kp in shaped:
-        ky, kx, kp_conf = kp
-        if kp_conf > confidence_threshold:
-            cv2.circle(frame, (int(kx), int(ky)), 6, (0, 255, 0), -1)
+        for i, j in zip(points, landmarks):
+            temp = temp + [j.x, j.y, j.z, j.visibility]
 
+        data.loc[count] = temp
+        count += 1
 
-EDGES = {
-    (0, 1): 'm',
-    (0, 2): 'c',
-    (1, 3): 'm',
-    (2, 4): 'c',
-    (0, 5): 'm',
-    (0, 6): 'c',
-    (5, 7): 'm',
-    (7, 9): 'm',
-    (6, 8): 'c',
-    (8, 10): 'c',
-    (5, 6): 'y',
-    (5, 11): 'm',
-    (6, 12): 'c',
-    (11, 12): 'y',
-    (11, 13): 'm',
-    (13, 15): 'm',
-    (12, 14): 'c',
-    (14, 16): 'c'
-}
+    cv2.imshow("Image", img)
+    cv2.imshow("blackie", blackie)
+    cv2.waitKey(3000)
 
+data.to_csv("dataset3.csv")  # save the data as a csv file
 
-def draw_connections(frame, keypoints, edges, confidence_threshold):
-    y, x, c = frame.shape
-    shaped = np.squeeze(np.multiply(keypoints, [y, x, 1]))
-
-    for edge, color in edges.items():
-        p1, p2 = edge
-        y1, x1, c1 = shaped[p1]
-        y2, x2, c2 = shaped[p2]
-
-        if (c1 > confidence_threshold) & (c2 > confidence_threshold):
-            cv2.line(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 4)
-
-
-# # Используется при рендере с помощью GPU. У меня, к сожалению видеокарта AMD, поэтому использовать не получится :( - нужны CUDA ядра NVIDIA.
-# gpus = tf.config.experimental.list_physical_devices('GPU')
-# for gpu in gpus:
-#     tf.config.experimental.set_memory_growth(gpu, True)
-
-model = hub.load('https://tfhub.dev/google/movenet/multipose/lightning/1')
-movenet = model.signatures['serving_default']
-
-cap = cv2.VideoCapture('novak.mp4') # указываем нужный файл для работы
-while cap.isOpened():
-    ret, frame = cap.read()
-
-    # Resize image
-    img = frame.copy()
-    img = tf.image.resize_with_pad(tf.expand_dims(img, axis=0), 384, 640)
-    input_img = tf.cast(img, dtype=tf.int32)
-
-    # Detection section
-    results = movenet(input_img)
-    keypoints_with_scores = results['output_0'].numpy()[:, :, :51].reshape((6, 17, 3))
-
-    # Render keypoints
-    loop_through_people(frame, keypoints_with_scores, EDGES, 0.1)
-
-    cv2.imshow('Movenet Multipose', frame)
-
-    if cv2.waitKey(10) & 0xFF == ord('q'):
-        break
-cap.release()
-cv2.destroyAllWindows()
+data = pd.read_csv("dataset3.csv")
+X, Y = data.iloc[:, :132], data['target']
+model = SVC(kernel='poly')
+model.fit(X, Y)
+mpPose = mp.solutions.pose
+pose = mpPose.Pose()
+mpDraw = mp.solutions.drawing_utils
+path = "/test images/001.jpg"
+img = cv2.imread(path)
+img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+results = pose.process(imgRGB)
+if results.pose_landmarks:
+    landmarks = results.pose_landmarks.landmark
+    for j in landmarks:
+        temp = temp + [j.x, j.y, j.z, j.visibility]
+    y = model.predict([temp])
+    if y == 0:
+        asan = "plank"
+    else:
+        asan = "goddess"
+    print(asan)
+    cv2.putText(img, asan, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
+    cv2.imshow("image", img)
