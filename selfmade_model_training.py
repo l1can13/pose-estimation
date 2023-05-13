@@ -15,7 +15,7 @@ model = tf.keras.Sequential([
   layers.MaxPooling2D(),
   layers.Flatten(),
   layers.Dense(512, activation='relu'),
-  layers.Dense(17) # 17 координат ключевых точек
+  layers.Dense(18) # 18 координат ключевых точек
 ])
 
 # Компиляция модели
