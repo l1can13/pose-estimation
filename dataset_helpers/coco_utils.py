@@ -221,9 +221,9 @@ class CocoDetection(torchvision.datasets.CocoDetection):
 def get_coco(root, image_set, transforms, mode='instances'):
     anno_file_template = "{}_{}2017.json"
     PATHS = {
-        "train": ("train2017", os.path.join("annotations", anno_file_template.format(mode, "train"))),
+        "train_libs": ("train2017", os.path.join("annotations", anno_file_template.format(mode, "train_libs"))),
         "val": ("val2017", os.path.join("annotations", anno_file_template.format(mode, "val"))),
-        # "train": ("val2017", os.path.join("annotations", anno_file_template.format(mode, "val")))
+        # "train_libs": ("val2017", os.path.join("annotations", anno_file_template.format(mode, "val")))
     }
 
     t = [ConvertCocoPolysToMask()]
@@ -238,7 +238,7 @@ def get_coco(root, image_set, transforms, mode='instances'):
 
     dataset = CocoDetection(img_folder, ann_file, transforms=transforms)
 
-    if image_set == "train":
+    if image_set == "train_libs":
         dataset = _coco_remove_images_without_annotations(dataset)
 
     # dataset = torch.utils.data.Subset(dataset, [i for i in range(500)])
