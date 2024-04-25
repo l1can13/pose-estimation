@@ -265,7 +265,9 @@ model_urls = {
 
 def keypointrcnn_resnet50_fpn(pretrained=False, progress=True,
                               num_classes=2, num_keypoints=17,
-                              pretrained_backbone=True, **kwargs):
+                              pretrained_backbone=True,
+                              box_detections_per_img=100,
+                              **kwargs):
     """
     Constructs a Keypoint R-CNN model with a ResNet-50-FPN backbone.
 
@@ -309,7 +311,7 @@ def keypointrcnn_resnet50_fpn(pretrained=False, progress=True,
         # no need to download the backbone if pretrained is set
         pretrained_backbone = False
     backbone = resnet_fpn_backbone('resnet50', pretrained_backbone)
-    model = KeypointRCNN(backbone, num_classes, num_keypoints=num_keypoints, **kwargs)
+    model = KeypointRCNN(backbone, num_classes, num_keypoints=num_keypoints, box_detections_per_img=box_detections_per_img, **kwargs)
     if pretrained:
         state_dict = load_state_dict_from_url(model_urls['keypointrcnn_resnet50_fpn_coco'],
                                               progress=progress)
