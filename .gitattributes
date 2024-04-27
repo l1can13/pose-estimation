@@ -1,2 +1,4 @@
 *.pt filter=lfs diff=lfs merge=lfs -text
+train_libs/model_12.pth filter=lfs diff=lfs merge=lfs -text
+dpt_beit_large_512.pt filter=lfs diff=lfs merge=lfs -text
 *.pth filter=lfs diff=lfs merge=lfs -text
