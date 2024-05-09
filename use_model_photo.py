@@ -68,6 +68,6 @@ def test_image(model_path, image_path, threshold=0.99):
 
 # Call the function
 if __name__ == "__main__":
-    model_path = 'train_libs/model_12.pth'  # Укажите путь к вашей модели
-    image_path = '2.jpg'  # Укажите путь к вашему изображению
+    model_path = 'model_12.pth'  # Укажите путь к вашей модели
+    image_path = '4.jpg'  # Укажите путь к вашему изображению
     test_image(model_path, image_path)

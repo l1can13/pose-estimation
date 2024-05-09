@@ -50,9 +50,17 @@ def get_transform(train):
 def main():
     dataset_name = 'coco_kp'
     model_name = 'keypointrcnn_resnet50_fpn'
-    batch_size = 2
+    batch_size = 5
     epochs = 13
-    workers = 4
+    # Получаем количество логических процессоров на машине
+    workers = os.cpu_count()
+
+    # Вы можете рассмотреть возможность оставить один или два ядра свободными для других задач,
+    # особенно если у вас только один GPU, чтобы избежать потенциальной перегрузки CPU.
+    if workers is not None:
+        workers = max(1, workers - 1)  # оставляем два ядра свободными, если это возможно
+
+    print(f"Setting num_workers to {workers}")
     lr = 0.02
     momentum = 0.9
     weight_decay = 1e-4
@@ -69,8 +77,8 @@ def main():
     # Data loading code
     print("Loading data")
 
-    dataset, num_classes = get_dataset(dataset_name, "train_libs", get_transform(train=True), subset_size=500)
-    dataset_test, _ = get_dataset(dataset_name, "val", get_transform(train=False), subset_size=50)
+    dataset, num_classes = get_dataset(dataset_name, "train_libs", get_transform(train=True))
+    dataset_test, _ = get_dataset(dataset_name, "val", get_transform(train=False))
 
     print("Creating data loaders")
     train_sampler = torch.utils.data.RandomSampler(dataset)

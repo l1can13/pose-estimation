@@ -157,4 +157,4 @@ def test_image(model_path, image_path, threshold=0.9, depth_threshold=0.7):
 
 
 if __name__ == "__main__":
-    test_image('train_libs/model_12.pth', '2.jpg')
+    test_image('model_12.pth', 'test.jpg')
