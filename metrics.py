@@ -56,14 +56,14 @@ def parse_test_results(content):
     }
     pattern_iou_bbox = re.compile(
         r"IoU metric: bbox\n"
-        r".*?Average Precision  \(AP\) @\[ IoU=0.50:0.95 \| area=   all \| maxDets=100 \] = ([\d\.]+)\n"
-        r".*?Average Recall     \(AR\) @\[ IoU=0.50:0.95 \| area=   all \| maxDets=100 \] = ([\d\.]+)",
+        r".*?Average Precision  \(AP\) @\[.*?\| maxDets=100 \] = ([\d\.]+)\n"
+        r".*?Average Recall     \(AR\) @\[.*?\| maxDets=100 \] = ([\d\.]+)",
         re.DOTALL
     )
     pattern_iou_keypoints = re.compile(
         r"IoU metric: keypoints\n"
-        r".*?Average Precision  \(AP\) @\[ IoU=0.50:0.95 \| area=   all \| maxDets= 20 \] = ([\d\.]+)\n"
-        r".*?Average Recall     \(AR\) @\[ IoU=0.50:0.95 \| area=   all \| maxDets= 20 \] = ([\d\.]+)",
+        r".*?Average Precision  \(AP\) @\[.*?\| maxDets= 20 \] = ([\d\.]+)\n"
+        r".*?Average Recall     \(AR\) @\[.*?\| maxDets= 20 \] = ([\d\.]+)",
         re.DOTALL
     )
     current_epoch = 0
@@ -72,17 +72,26 @@ def parse_test_results(content):
             epoch_number = epoch_block.split()[0].strip('[]')
             if epoch_number.isdigit():
                 current_epoch = int(epoch_number)
-                bbox_match = pattern_iou_bbox.search(epoch_block)
-                keypoints_match = pattern_iou_keypoints.search(epoch_block)
-                if bbox_match:
+
+                # Extract all AP and AR values for bbox and keypoints
+                bbox_aps = re.findall(r"Average Precision  \(AP\) @\[.*?\| maxDets=100 \] = ([\d\.]+)", epoch_block)
+                bbox_ars = re.findall(r"Average Recall     \(AR\) @\[.*?\| maxDets=100 \] = ([\d\.]+)", epoch_block)
+                keypoints_aps = re.findall(r"Average Precision  \(AP\) @\[.*?\| maxDets= 20 \] = ([\d\.]+)",
+                                           epoch_block)
+                keypoints_ars = re.findall(r"Average Recall     \(AR\) @\[.*?\| maxDets= 20 \] = ([\d\.]+)",
+                                           epoch_block)
+
+                if bbox_aps and bbox_ars:
                     test_results['epoch'].append(current_epoch)
-                    test_results['bbox_AP'].append(float(bbox_match.group(1)))
-                    test_results['bbox_AR'].append(float(bbox_match.group(2)))
-                if keypoints_match:
+                    test_results['bbox_AP'].append(sum(map(float, bbox_aps)) / len(bbox_aps))
+                    test_results['bbox_AR'].append(sum(map(float, bbox_ars)) / len(bbox_ars))
+
+                if keypoints_aps and keypoints_ars:
                     if current_epoch not in test_results['epoch']:
                         test_results['epoch'].append(current_epoch)
-                    test_results['keypoints_AP'].append(float(keypoints_match.group(1)))
-                    test_results['keypoints_AR'].append(float(keypoints_match.group(2)))
+                    test_results['keypoints_AP'].append(sum(map(float, keypoints_aps)) / len(keypoints_aps))
+                    test_results['keypoints_AR'].append(sum(map(float, keypoints_ars)) / len(keypoints_ars))
+
     return pd.DataFrame(test_results)
 
 

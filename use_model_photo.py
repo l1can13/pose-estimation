@@ -1,11 +1,11 @@
-import matplotlib.pyplot as plt
-import torch
-import torchvision
-from torchvision.transforms import functional as F
 import cv2
-from PIL import Image
+import matplotlib.pyplot as plt
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
+import torch
+from PIL import Image
+from torchvision.models.detection import KeypointRCNN
+from torchvision.models.detection.backbone_utils import resnet_fpn_backbone
+from torchvision.transforms import functional as F
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -22,13 +22,20 @@ skeleton = [
 ]
 
 
-def test_image(model_path, image_path, threshold=0.99):
-    # Load the keypoint detection model
-    model = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=False)
+def load_model(model_path, backbone_name='resnet50'):
+    # Загрузка и настройка backbone
+    backbone = resnet_fpn_backbone(backbone_name=backbone_name, pretrained=False)
+    model = KeypointRCNN(backbone, num_classes=2, pretrained=False)  # num_classes для фона и человека
     checkpoint = torch.load(model_path, map_location=device)
     model.load_state_dict(checkpoint['model'])
     model.to(device)
     model.eval()
+    return model
+
+
+def test_image(model_path, image_path, backbone_name='resnet50', threshold=0.95):
+    # Load the keypoint detection model
+    model = load_model(model_path, backbone_name)
 
     # Load and transform the image
     image = Image.open(image_path).convert("RGB")
@@ -57,17 +64,15 @@ def test_image(model_path, image_path, threshold=0.99):
                 if keypoint[start, 2] > threshold and keypoint[end, 2] > threshold:
                     cv2.line(image_cv2, start_point, end_point, (0, 255, 0), 2)
 
-    # Convert image back to RGB format
+    # Convert image back to RGB format and display
     image_rgb = cv2.cvtColor(image_cv2, cv2.COLOR_BGR2RGB)
-
-    # Display the image with keypoints and skeleton
     plt.imshow(image_rgb)
     plt.axis('off')
     plt.show()
 
 
-# Call the function
 if __name__ == "__main__":
-    model_path = 'model_12.pth'  # Укажите путь к вашей модели
-    image_path = '4.jpg'  # Укажите путь к вашему изображению
-    test_image(model_path, image_path)
+    model_path = 'resnet101.pth'  # Путь к вашей модели
+    image_path = 'test.jpg'  # Путь к вашему изображению
+    backbone_name = 'resnet101'  # Указывается нужный backbone
+    test_image(model_path, image_path, backbone_name)

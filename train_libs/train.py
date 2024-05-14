@@ -4,19 +4,15 @@ import time
 
 import torch
 import torch.utils.data
-import torchvision
-import torchvision.models.detection
-import torchvision.models.detection.mask_rcnn
+from torchvision.models.detection import KeypointRCNN
+from torchvision.models.detection.backbone_utils import resnet_fpn_backbone
 
 from dataset_helpers.coco_utils import get_coco, get_coco_kp
-
+from torchvision_libs import utils, transforms as T
 from torchvision_libs.group_by_aspect_ratio import GroupedBatchSampler, create_aspect_ratio_groups
 from train_libs.engine import train_one_epoch, evaluate
 
-from torchvision_libs import utils, transforms as T
-
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-# device = torch.device('cpu')
 print(f"Using device: {device}")
 
 from torch.utils.data import Subset
@@ -47,18 +43,14 @@ def get_transform(train):
     return T.Compose(transforms)
 
 
-def main():
+def main(backbone_name='resnet50'):
     dataset_name = 'coco_kp'
-    model_name = 'keypointrcnn_resnet50_fpn'
     batch_size = 5
     epochs = 13
-    # Получаем количество логических процессоров на машине
     workers = os.cpu_count()
 
-    # Вы можете рассмотреть возможность оставить один или два ядра свободными для других задач,
-    # особенно если у вас только один GPU, чтобы избежать потенциальной перегрузки CPU.
     if workers is not None:
-        workers = max(1, workers - 1)  # оставляем два ядра свободными, если это возможно
+        workers = max(1, workers - 1)
 
     print(f"Setting num_workers to {workers}")
     lr = 0.02
@@ -74,9 +66,7 @@ def main():
     test_only = False
     pretrained = True
 
-    # Data loading code
     print("Loading data")
-
     dataset, num_classes = get_dataset(dataset_name, "train_libs", get_transform(train=True))
     dataset_test, _ = get_dataset(dataset_name, "val", get_transform(train=False))
 
@@ -88,29 +78,22 @@ def main():
         group_ids = create_aspect_ratio_groups(dataset, k=aspect_ratio_group_factor)
         train_batch_sampler = GroupedBatchSampler(train_sampler, group_ids, batch_size)
     else:
-        train_batch_sampler = torch.utils.data.BatchSampler(
-            train_sampler, batch_size, drop_last=True)
+        train_batch_sampler = torch.utils.data.BatchSampler(train_sampler, batch_size, drop_last=True)
 
-    data_loader = torch.utils.data.DataLoader(
-        dataset, batch_sampler=train_batch_sampler, num_workers=workers,
-        collate_fn=utils.collate_fn)
-
-    data_loader_test = torch.utils.data.DataLoader(
-        dataset_test, batch_size=1,
-        sampler=test_sampler, num_workers=workers,
-        collate_fn=utils.collate_fn)
+    data_loader = torch.utils.data.DataLoader(dataset, batch_sampler=train_batch_sampler, num_workers=workers,
+                                              collate_fn=utils.collate_fn)
+    data_loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=1, sampler=test_sampler,
+                                                   num_workers=workers, collate_fn=utils.collate_fn)
 
     print("Creating model")
-    model = torchvision.models.detection.__dict__[model_name](num_classes=num_classes,
-                                                              pretrained=pretrained)
+    backbone = resnet_fpn_backbone(backbone_name, pretrained=pretrained)
+    model = KeypointRCNN(backbone, num_classes=num_classes)
     model.to(device)
 
     model_without_ddp = model
 
     params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.SGD(
-        params, lr=lr, momentum=momentum, weight_decay=weight_decay)
-
+    optimizer = torch.optim.SGD(params, lr=lr, momentum=momentum, weight_decay=weight_decay)
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=lr_steps, gamma=lr_gamma)
 
     if resume_path:
@@ -129,13 +112,10 @@ def main():
         train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq)
         lr_scheduler.step()
         if output_dir:
-            utils.save_on_master({
-                'model': model_without_ddp.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                'lr_scheduler': lr_scheduler.state_dict()},
-                os.path.join(output_dir, 'model_{}.pth'.format(epoch)))
+            model_save_path = os.path.join(output_dir, f'{backbone_name}_epoch_{epoch}.pth')
+            utils.save_on_master({'model': model_without_ddp.state_dict(), 'optimizer': optimizer.state_dict(),
+                                  'lr_scheduler': lr_scheduler.state_dict()}, model_save_path)
 
-        # evaluate after every epoch
         evaluate(model, data_loader_test, device=device)
 
     total_time = time.time() - start_time
@@ -144,4 +124,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main('resnet50')  # Или другой backbone по желанию

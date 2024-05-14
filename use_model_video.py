@@ -51,5 +51,5 @@ def process_video(video_path, output_path, model, device):
 
 
 # Использование функций
-model = load_model('train_libs/model_12.pth', device)
+model = load_model('train_libs/resnet50.pth', device)
 process_video('test.mp4', 'result.mp4', model, device)

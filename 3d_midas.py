@@ -66,7 +66,7 @@ def correct_keypoints(keypoints, depth_map, image_shape, threshold=0.1):
     return keypoints
 
 
-def test_image(model_path, image_path, threshold=0.9, depth_threshold=0.7):
+def test_image(model_path, image_path, threshold=0.99, depth_threshold=0.99):
     model = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=False)
     checkpoint = torch.load(model_path, map_location=device)
     model.load_state_dict(checkpoint['model'])
@@ -157,4 +157,4 @@ def test_image(model_path, image_path, threshold=0.9, depth_threshold=0.7):
 
 
 if __name__ == "__main__":
-    test_image('model_12.pth', 'test.jpg')
+    test_image('resnet50.pth', '1.jpg')
