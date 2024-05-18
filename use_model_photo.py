@@ -73,6 +73,6 @@ def test_image(model_path, image_path, backbone_name='resnet50', threshold=0.95)
 
 if __name__ == "__main__":
     model_path = 'resnet101.pth'  # Путь к вашей модели
-    image_path = 'test.jpg'  # Путь к вашему изображению
+    image_path = '1.jpg'  # Путь к вашему изображению
     backbone_name = 'resnet101'  # Указывается нужный backbone
     test_image(model_path, image_path, backbone_name)

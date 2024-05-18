@@ -21,9 +21,22 @@ print(f"Using device: {device}")
 
 @contextmanager
 def redirect_stdout_to_file(filepath):
+    class MultiStream:
+        def __init__(self, *streams):
+            self.streams = streams
+
+        def write(self, message):
+            for stream in self.streams:
+                stream.write(message)
+                stream.flush()
+
+        def flush(self):
+            for stream in self.streams:
+                stream.flush()
+
     original_stdout = sys.stdout
     with open(filepath, 'a') as f:
-        sys.stdout = f
+        sys.stdout = MultiStream(sys.stdout, f)
         yield
         sys.stdout = original_stdout
 
@@ -58,13 +71,15 @@ def main(backbone_name='resnet50'):
     log_file = os.path.join(output_dir, f'{backbone_name}_training.log')
 
     with redirect_stdout_to_file(log_file):
+        print(f"Using device: {device}")
+
         dataset_name = 'coco_kp'
         batch_size = 5
-        epochs = 2
+        epochs = 13
         workers = os.cpu_count()
 
         if workers is not None:
-            workers = max(1, workers - 1)
+            workers = max(1, workers - 2)
 
         print(f"Setting num_workers to {workers}")
         lr = 0.02
@@ -80,8 +95,8 @@ def main(backbone_name='resnet50'):
         pretrained = True
 
         print("Loading data")
-        dataset, num_classes = get_dataset(dataset_name, "train_libs", get_transform(train=True), subset_size=100)
-        dataset_test, _ = get_dataset(dataset_name, "val", get_transform(train=False), subset_size=20)
+        dataset, num_classes = get_dataset(dataset_name, "train_libs", get_transform(train=True), subset_size=None)
+        dataset_test, _ = get_dataset(dataset_name, "val", get_transform(train=False), subset_size=None)
 
         print("Creating data loaders")
         train_sampler = torch.utils.data.RandomSampler(dataset)
@@ -138,4 +153,4 @@ def main(backbone_name='resnet50'):
 
 
 if __name__ == "__main__":
-    main('resnet101')  # Или другой backbone по желанию
+    main('resnet18')

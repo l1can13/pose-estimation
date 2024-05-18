@@ -96,7 +96,7 @@ def parse_test_results(content):
 
 
 def main():
-    file_path = 'вывод ВКР.txt'
+    file_path = 'resnet50.log'
     lines = read_file(file_path)
     df = parse_epoch_data(lines)
     mean_metrics_per_epoch = df.groupby('epoch').mean().reset_index()
